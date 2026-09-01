@@ -212,10 +212,22 @@ table.tbl tr:hover td{background:var(--cream)}
 
 /* ===== MESAS ===== */
 .mesa-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-.plano{position:relative;background:
+.plano-area{position:relative}
+.plano-wrap{overflow:auto;height:min(72vh,660px);border:1px solid var(--line);border-radius:16px;background:var(--paper);-webkit-overflow-scrolling:touch}
+.plano-canvas{position:relative;background:
   linear-gradient(var(--line) 1px,transparent 1px) 0 0/26px 26px,
-  linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/26px 26px,var(--paper);
-  border:1px solid var(--line);border-radius:16px;height:560px;overflow:hidden;touch-action:none}
+  linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/26px 26px,var(--paper);touch-action:none}
+.plano-empty{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--muted);pointer-events:none}
+.plano-empty .ei{font-size:34px;opacity:.5;margin-bottom:8px}
+.plano-empty h3{font-size:22px;color:var(--ink-soft)}
+.plano-zoom{position:absolute;left:12px;bottom:12px;display:flex;gap:4px;align-items:center;background:rgba(255,255,255,.96);
+  border:1px solid var(--line);border-radius:10px;padding:4px;box-shadow:var(--shadow);z-index:15}
+.plano-zoom button{width:30px;height:30px;border-radius:7px;font-size:17px;color:var(--olive-deep)}
+.plano-zoom button:hover{background:var(--sand)}
+.plano-zoom .z{min-width:42px;text-align:center;font-size:12px;color:var(--ink-soft)}
+.ua-fab{position:absolute;top:12px;right:12px;z-index:16;background:var(--olive);color:#fff;border-radius:100px;
+  padding:9px 16px;font-size:13px;font-weight:500;box-shadow:var(--shadow-lg)}
+.ua-fab:hover{background:var(--olive-deep)}
 .mesa{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;cursor:grab;user-select:none}
 .mesa.dragging{cursor:grabbing;z-index:20}
 .mesa-top{background:var(--paper);border:2px solid var(--sage);border-radius:50%;display:flex;flex-direction:column;
@@ -223,17 +235,49 @@ table.tbl tr:hover td{background:var(--cream)}
 .mesa-top.rect{border-radius:14px}
 .mesa.full .mesa-top{border-color:var(--olive)}
 .mesa.over .mesa-top{border-color:var(--danger);background:var(--danger-bg)}
-.mesa-name{font-family:'Cormorant Garamond';font-size:16px;color:var(--olive-deep);line-height:1}
+.mesa-name{font-family:'Cormorant Garamond';font-size:16px;color:var(--olive-deep);line-height:1;text-align:center;padding:0 4px}
 .mesa-occ{font-size:10px;color:var(--muted);margin-top:1px}
 .seat{position:absolute;width:15px;height:15px;border-radius:50%;background:var(--sand);border:1px solid var(--beige-deep)}
 .seat.taken{background:var(--sage)}
-.mesa-fams{margin-top:5px;display:flex;flex-wrap:wrap;gap:3px;max-width:140px;justify-content:center}
+.mesa-fams{margin-top:5px;display:flex;flex-wrap:wrap;gap:3px;max-width:150px;justify-content:center}
 .fam-tag{font-size:9.5px;padding:1px 6px;border-radius:100px;color:#fff;white-space:nowrap;cursor:pointer}
-.unassigned{position:absolute;top:12px;right:12px;width:190px;max-height:calc(100% - 24px);overflow-y:auto;background:rgba(255,255,255,.96);
-  border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:10px}
-.unassigned h4{font-size:15px;margin-bottom:8px}
+.elem{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;cursor:grab;user-select:none}
+.elem.dragging{cursor:grabbing;z-index:20}
+.elem-icon{width:50px;height:50px;border-radius:14px;background:var(--sand);border:1.5px dashed var(--olive-mid);
+  display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:var(--shadow)}
+.elem-label{font-size:11px;color:var(--ink-soft);margin-top:3px;background:rgba(255,255,255,.85);padding:1px 7px;border-radius:100px;white-space:nowrap}
+.elem-x{position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;background:var(--paper);
+  border:1px solid var(--line);box-shadow:var(--shadow);font-size:10px;display:flex;align-items:center;justify-content:center;z-index:3;color:var(--muted)}
+.elem-menu{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.elem-pick{display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 6px;border:1px solid var(--line);
+  border-radius:12px;background:var(--cream);font-size:12px;color:var(--ink-soft);transition:.15s}
+.elem-pick:hover{border-color:var(--sage);background:#fff;transform:translateY(-2px)}
+.elem-pick .ei2{font-size:24px}
+.unassigned{position:absolute;top:12px;right:12px;width:210px;max-height:calc(100% - 24px);display:flex;flex-direction:column;
+  background:rgba(255,255,255,.97);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);z-index:16}
+.ua-head{display:flex;align-items:center;justify-content:space-between;padding:9px 8px 8px 12px;border-bottom:1px solid var(--line)}
+.ua-head h4{font-size:15px}
+.ua-list{overflow-y:auto;padding:8px}
 .ua-item{font-size:12px;padding:6px 8px;border-radius:7px;cursor:pointer;display:flex;justify-content:space-between;gap:6px;align-items:center}
 .ua-item:hover{background:var(--sand)}
+.lb{position:fixed;inset:0;background:rgba(46,50,39,.93);z-index:95;display:flex;flex-direction:column}
+.lb-top{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:14px 18px;color:#fff}
+.lb-count{margin-right:auto;font-size:13px;color:#D6DAC4}
+.lb-btn{background:rgba(255,255,255,.14);color:#fff;border-radius:100px;padding:7px 14px;font-size:13px}
+.lb-btn:hover{background:rgba(255,255,255,.26)}
+.lb-main{flex:1;display:flex;align-items:center;justify-content:center;position:relative;padding:0 8px;min-height:0}
+.lb-img{max-width:92vw;max-height:74vh;border-radius:12px;box-shadow:var(--shadow-lg)}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);width:50px;height:50px;border-radius:50%;
+  background:rgba(255,255,255,.16);color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center}
+.lb-nav:hover{background:rgba(255,255,255,.3)}
+.lb-prev{left:14px}.lb-next{right:14px}
+.lb-cap{color:#EDEEE4;text-align:center;padding:12px 18px 20px;font-size:14px}
+.lb-ficha{background:var(--paper);border-radius:16px;max-width:min(560px,92vw);max-height:80vh;overflow:auto;display:flex;flex-direction:column}
+.lb-ficha img{width:100%;max-height:44vh;object-fit:cover;border-radius:16px 16px 0 0}
+.lb-info{padding:18px 20px;display:flex;flex-direction:column;gap:9px;align-items:flex-start}
+.lb-txt{font-family:'Cormorant Garamond';font-size:24px;color:var(--olive-deep);line-height:1.15}
+.lb-precio{font-size:15px;color:var(--olive-deep);font-weight:500}
+.lb-autor{font-size:11px;padding:2px 10px;border-radius:100px;color:#fff}
 
 /* ===== CRONOGRAMA / PENDIENTES sortable ===== */
 .tl-item,.pend-item,.idea-item{background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin-bottom:10px}
@@ -442,7 +486,7 @@ function seed(){
     damas:SEED_DAMAS.map(n=>({id:uid(),nombre:n})),
     budget:SEED_BUDGET.map(b=>({id:uid(),item:b.item,categoria:'General',total:b.total||0,sena:b.sena||0,senaFecha:'',estado:(b.sena>0?'senado':(b.total>0?'pendiente':'pendiente')),proveedorId:null,nota:''})),
     compras:[],
-    mesas:{base:'invitados',tables:[],placed:{}},
+    mesas:{base:'invitados',tables:[],placed:{},elementos:[],uaPinned:false},
     cronograma:[
       {id:uid(),hora:'16:00',titulo:'Sesión de fotos',desc:'Fotos de los novios antes de la ceremonia'},
       {id:uid(),hora:'18:00',titulo:'Ceremonia',desc:''},
@@ -955,38 +999,79 @@ function saveGuest(id){
 function editDama(){const n=prompt('Nombre de la dama:');if(n&&n.trim()){S.damas.push({id:uid(),nombre:n.trim()});save();}}
 
 /* ============ MESAS ============ */
+let planoZoom=1, uaOpen=false, planoW=1200, planoH=760, drag=null;
+const ELEM_TIPOS=[
+  ['torta','🎂','Torta'],['dj','🎧','DJ / Música'],['pista','💃','Pista de baile'],
+  ['barra','🍸','Barra'],['banos','🚻','Baños'],['entrada','🚪','Entrada'],
+  ['salida','🏃','Salida'],['ceremonia','💍','Ceremonia'],['photobooth','📸','Photobooth'],
+  ['regalos','🎁','Regalos'],['libro','📖','Libro de firmas'],['deco','🌿','Decoración'],
+  ['escenario','🎤','Escenario'],['bar','☕','Cafetería'],['otro','📍','Otro']
+];
 function mesaPool(){return S.mesas.base==='confirmados'?S.guests.filter(g=>g.estado==='confirmado'):S.guests.filter(g=>g.estado!=='noviene');}
 function seatsOf(t){return t.seats||[];}
 function occOf(t){let o=0;seatsOf(t).forEach(id=>{const g=S.guests.find(x=>x.id===id);if(g)o+=g.adultos+g.ninos;});return o;}
 function assignedIds(){const s=new Set();S.mesas.tables.forEach(t=>seatsOf(t).forEach(id=>s.add(id)));return s;}
+
 function vMesas(){
   const pool=mesaPool();const asg=assignedIds();
   const unassigned=pool.filter(g=>!asg.has(g.id));
   const totalCap=S.mesas.tables.reduce((a,t)=>a+(t.capacidad||0),0);
   const seated=S.mesas.tables.reduce((a,t)=>a+occOf(t),0);
+  const elementos=S.mesas.elementos||[];
+  // tamaño del lienzo (crece con las posiciones)
+  let cw=1200,ch=760;
+  S.mesas.tables.forEach(t=>{cw=Math.max(cw,(t.x||0)+240);ch=Math.max(ch,(t.y||0)+240);});
+  elementos.forEach(e=>{cw=Math.max(cw,(e.x||0)+180);ch=Math.max(ch,(e.y||0)+160);});
+  planoW=cw;planoH=ch;
+  const pinned=!!S.mesas.uaPinned; const showUA=pinned||uaOpen;
+  const vacio = !S.mesas.tables.length && !elementos.length;
   $('#view').innerHTML=`
   <div class="view-head">
-    <div><h1>Mesas</h1><div class="sub">Armá el plano tal cual el salón · las familias se sientan enteras</div></div>
+    <div><h1>Mesas</h1><div class="sub">Armá el plano tal cual el salón · sentá familias y ubicá torta, DJ, baños, etc.</div></div>
     <div class="head-actions no-print">
       <div class="seg"><button class="${S.mesas.base==='invitados'?'on':''}" onclick="setBase('invitados')">Todos los invitados</button><button class="${S.mesas.base==='confirmados'?'on':''}" onclick="setBase('confirmados')">Solo confirmados</button></div>
-      <button class="btn" onclick="editMesa()">+ Mesa</button>
+      <button class="btn" onclick="addElemMenu()">+ Elemento</button>
+      <button class="btn btn-pri" onclick="editMesa()">+ Mesa</button>
     </div>
   </div>
   <div class="mesa-bar">
     <span class="badge b-mut">${S.mesas.tables.length} mesas</span>
     <span class="badge b-mut">Capacidad ${totalCap}</span>
     <span class="badge b-ok">Sentados ${seated}</span>
-    <span class="badge ${unassigned.length?'b-warn':'b-ok'}">${unassigned.length} familias sin asignar</span>
-    <span style="font-size:12px;color:var(--muted)">· Arrastrá las mesas para acomodarlas</span>
+    <span class="badge ${unassigned.length?'b-warn':'b-ok'}">${unassigned.length} sin asignar</span>
+    <span style="font-size:12px;color:var(--muted)">· Arrastrá para acomodar · doble clic para renombrar</span>
   </div>
-  <div class="plano" id="plano">
-    ${S.mesas.tables.map(t=>mesaHTML(t)).join('')}
-    ${unassigned.length?`<div class="unassigned no-print"><h4>Sin asignar (${unassigned.length})</h4>
-      ${unassigned.map(g=>`<div class="ua-item" onclick="pickTable('${g.id}')"><span style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:${famColor(g)}"></span>${esc(g.nombre)}</span><span class="pc">${g.adultos+g.ninos}</span></div>`).join('')}</div>`:''}
-    ${!S.mesas.tables.length?`<div class="empty" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)"><div class="ei">💺</div><h3>Todavía no hay mesas</h3><p>Tocá "+ Mesa" para empezar a armar el plano</p></div>`:''}
+  <div class="plano-area">
+    <div class="plano-wrap" id="planoWrap">
+      <div class="plano-canvas" id="plano" style="width:${cw}px;height:${ch}px;zoom:${planoZoom}">
+        ${S.mesas.tables.map(t=>mesaHTML(t)).join('')}
+        ${elementos.map(e=>elemHTML(e)).join('')}
+      </div>
+    </div>
+    ${vacio?`<div class="plano-empty"><div class="ei">💺</div><h3>Todavía no hay nada en el plano</h3><p>Tocá "+ Mesa" o "+ Elemento" para empezar</p></div>`:''}
+    <div class="plano-zoom no-print">
+      <button onclick="setZoom(${(planoZoom-0.1).toFixed(1)})" title="Alejar">−</button>
+      <span class="z">${Math.round(planoZoom*100)}%</span>
+      <button onclick="setZoom(${(planoZoom+0.1).toFixed(1)})" title="Acercar">+</button>
+      <button onclick="setZoom(1)" title="Restablecer" style="font-size:12px">⟳</button>
+    </div>
+    ${showUA?`
+    <div class="unassigned no-print">
+      <div class="ua-head"><h4>Sin asignar (${unassigned.length})</h4>
+        <span style="display:flex;gap:2px">
+          <button class="icon-btn" title="${pinned?'Dejar de fijar':'Fijar abierto'}" onclick="toggleUaPin()">${pinned?'📌':'📍'}</button>
+          ${!pinned?`<button class="icon-btn" title="Cerrar" onclick="uaOpen=false;render()">✕</button>`:''}
+        </span>
+      </div>
+      <div class="ua-list">
+        ${unassigned.length?unassigned.map(g=>`<div class="ua-item" onclick="pickTable('${g.id}')"><span style="display:flex;align-items:center;gap:6px"><span class="dot" style="background:${famColor(g)}"></span>${esc(g.nombre)}</span><span class="pc">${g.adultos+g.ninos}</span></div>`).join(''):'<div style="color:var(--muted);font-size:12px;text-align:center;padding:12px">Todas asignadas 🎉</div>'}
+      </div>
+    </div>`
+    :`<button class="ua-fab no-print" onclick="uaOpen=true;render()">👥 Sin asignar (${unassigned.length})</button>`}
   </div>`;
   enableDrag();
 }
+
 function mesaHTML(t){
   const occ=occOf(t);const cap=t.capacidad||0;const over=occ>cap;const full=occ===cap&&cap>0;
   const size=Math.max(74,Math.min(120,52+cap*7));
@@ -1002,7 +1087,40 @@ function mesaHTML(t){
     <div class="mesa-fams">${fams}</div>
   </div>`;
 }
+
+function elemHTML(el){
+  return `<div class="elem" data-id="${el.id}" style="left:${el.x}px;top:${el.y}px">
+    <button class="elem-x no-print" onpointerdown="event.stopPropagation()" onclick="event.stopPropagation();delElem('${el.id}')" title="Quitar">✕</button>
+    <div class="elem-icon">${el.icon||'📍'}</div>
+    <div class="elem-label">${esc(el.label)}</div>
+  </div>`;
+}
+
+function setZoom(v){planoZoom=Math.max(0.4,Math.min(1.5,Math.round(v*10)/10));render();}
 function setBase(b){S.mesas.base=b;save();}
+function toggleUaPin(){S.mesas.uaPinned=!S.mesas.uaPinned;if(S.mesas.uaPinned)uaOpen=true;save();}
+
+/* elementos de arquitectura */
+function addElemMenu(){
+  modal(`<div class="modal-h"><h3>Agregar al plano</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+  <div class="modal-b"><div class="sub" style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Elegí qué querés marcar. Después lo arrastrás a su lugar en el salón.</div>
+  <div class="elem-menu">${ELEM_TIPOS.map(t=>`<button class="elem-pick" onclick="addElem('${t[0]}')"><span class="ei2">${t[1]}</span>${t[2]}</button>`).join('')}</div>
+  </div><div class="modal-f"><button class="btn" onclick="closeModal()">Cerrar</button></div>`);
+}
+function addElem(tipo){
+  const t=ELEM_TIPOS.find(x=>x[0]===tipo)||['otro','📍','Elemento'];
+  let label=t[2];
+  if(tipo==='otro'){const n=prompt('¿Qué querés marcar? (ej. Mesa de dulces)');if(!n||!n.trim())return;label=n.trim();}
+  if(!S.mesas.elementos)S.mesas.elementos=[];
+  const wrap=document.getElementById('planoWrap');
+  const x=Math.round((wrap?wrap.scrollLeft:0)/planoZoom)+220;
+  const y=Math.round((wrap?wrap.scrollTop:0)/planoZoom)+140;
+  S.mesas.elementos.push({id:uid(),tipo,icon:t[1],label,x,y});
+  closeModal();save();toast(label+' agregado · arrastralo a su lugar');
+}
+function delElem(id){if(!confirm('¿Quitar este elemento del plano?'))return;S.mesas.elementos=(S.mesas.elementos||[]).filter(e=>e.id!==id);save();}
+function renameElem(id){const el=(S.mesas.elementos||[]).find(e=>e.id===id);if(!el)return;const n=prompt('Nombre:',el.label);if(n&&n.trim()){el.label=n.trim();save();}}
+
 function editMesa(id){
   const sug='Mesa '+(S.mesas.tables.length+1);
   const t=id?S.mesas.tables.find(x=>x.id===id):{nombre:'',capacidad:10,forma:'circle'};
@@ -1013,14 +1131,14 @@ function editMesa(id){
       <div class="field"><label>Capacidad (lugares)</label><input id="m_cap" type="number" min="1" value="${t.capacidad}"></div>
       <div class="field"><label>Forma</label><select id="m_forma"><option value="circle"${t.forma!=='rect'?' selected':''}>Redonda</option><option value="rect"${t.forma==='rect'?' selected':''}>Rectangular</option></select></div>
     </div>
-    ${id?'<button class="btn btn-sm" onclick="delMesa(\''+id+'\')" style="color:var(--danger)">🗑 Eliminar mesa</button>':''}
+    ${id?`<button class="btn btn-sm" onclick="delMesa('${id}')" style="color:var(--danger)">🗑 Eliminar mesa</button>`:''}
   </div>
   <div class="modal-f"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-pri" onclick="saveMesa('${id||''}')">Guardar</button></div>`);
 }
 function saveMesa(id){
   const o={nombre:$('#m_nom').value.trim()||('Mesa '+(S.mesas.tables.length+1)),capacidad:parseInt($('#m_cap').value)||1,forma:$('#m_forma').value};
   if(id){Object.assign(S.mesas.tables.find(x=>x.id===id),o);}
-  else{o.id=uid();o.seats=[];o.x=60+S.mesas.tables.length%5*150;o.y=70+Math.floor(S.mesas.tables.length/5)*160;S.mesas.tables.push(o);}
+  else{o.id=uid();o.seats=[];o.x=80+S.mesas.tables.length%5*170;o.y=90+Math.floor(S.mesas.tables.length/5)*180;S.mesas.tables.push(o);}
   closeModal();save();toast('Mesa guardada');
 }
 function delMesa(id){if(!confirm('¿Eliminar la mesa? Las familias vuelven a "sin asignar".'))return;S.mesas.tables=S.mesas.tables.filter(t=>t.id!==id);closeModal();save();}
@@ -1042,25 +1160,28 @@ function pickTable(gid){
 }
 function seat(tid,gid){const t=S.mesas.tables.find(x=>x.id===tid);if(!t.seats)t.seats=[];if(!t.seats.includes(gid))t.seats.push(gid);
   const occ=occOf(t);if(occ>t.capacidad)toast('⚠ La mesa quedó sobrepasada');closeModal();save();}
-/* drag mesas */
-let drag=null;
+
+/* drag de mesas y elementos (con zoom) */
 function enableDrag(){
   const plano=$('#plano');if(!plano)return;
-  plano.querySelectorAll('.mesa').forEach(el=>{
+  function dragEl(el,getObj,onClick){
     el.addEventListener('pointerdown',e=>{
-      if(e.target.closest('.mesa-edit')||e.target.closest('.fam-tag'))return;
-      const t=S.mesas.tables.find(x=>x.id===el.dataset.id);const r=plano.getBoundingClientRect();
-      drag={el,t,dx:e.clientX-r.left-t.x,dy:e.clientY-r.top-t.y,moved:false,r};el.setPointerCapture(e.pointerId);el.classList.add('dragging');
+      if(e.target.closest('.mesa-edit')||e.target.closest('.fam-tag')||e.target.closest('.elem-x'))return;
+      const obj=getObj(el);if(!obj)return;const r=plano.getBoundingClientRect();const z=planoZoom;
+      drag={el,obj,z,dx:(e.clientX-r.left)/z-obj.x,dy:(e.clientY-r.top)/z-obj.y,moved:false,r};
+      el.setPointerCapture(e.pointerId);el.classList.add('dragging');
     });
     el.addEventListener('pointermove',e=>{
-      if(!drag||drag.el!==el)return;const nx=e.clientX-drag.r.left-drag.dx,ny=e.clientY-drag.r.top-drag.dy;
-      if(Math.abs(nx-drag.t.x)+Math.abs(ny-drag.t.y)>4)drag.moved=true;
-      drag.t.x=Math.max(40,Math.min(drag.r.width-40,nx));drag.t.y=Math.max(40,Math.min(drag.r.height-40,ny));
-      el.style.left=drag.t.x+'px';el.style.top=drag.t.y+'px';
+      if(!drag||drag.el!==el)return;const z=drag.z;
+      let nx=(e.clientX-drag.r.left)/z-drag.dx, ny=(e.clientY-drag.r.top)/z-drag.dy;
+      if(Math.abs(nx-drag.obj.x)+Math.abs(ny-drag.obj.y)>4)drag.moved=true;
+      drag.obj.x=Math.max(20,Math.min(planoW-20,nx));drag.obj.y=Math.max(20,Math.min(planoH-20,ny));
+      el.style.left=drag.obj.x+'px';el.style.top=drag.obj.y+'px';
     });
-    el.addEventListener('pointerup',e=>{if(!drag||drag.el!==el)return;el.classList.remove('dragging');const moved=drag.moved;const id=el.dataset.id;drag=null;persist();if(!moved)pickForTable(id);});
-    el.addEventListener('dblclick',()=>editMesa(el.dataset.id));
-  });
+    el.addEventListener('pointerup',e=>{if(!drag||drag.el!==el)return;el.classList.remove('dragging');const moved=drag.moved;drag=null;persist();if(!moved&&onClick)onClick(el);});
+  }
+  plano.querySelectorAll('.mesa').forEach(el=>{ dragEl(el,e=>S.mesas.tables.find(x=>x.id===e.dataset.id),e=>pickForTable(e.dataset.id)); el.addEventListener('dblclick',()=>editMesa(el.dataset.id)); });
+  plano.querySelectorAll('.elem').forEach(el=>{ dragEl(el,e=>(S.mesas.elementos||[]).find(x=>x.id===e.dataset.id),null); el.addEventListener('dblclick',()=>renameElem(el.dataset.id)); });
 }
 
 /* ============ CRONOGRAMA ============ */
@@ -1188,7 +1309,7 @@ function ideasInFolder(id){ return (S.ideas||[]).filter(i=>(i.folderId||null)===
 function ideaImgTag(i,cls){
   const src=imgSrc(i);
   if(!i.imgId && !i.img) return '';
-  if(src) return `<img class="${cls}" src="${src}" onclick="openImg('${i.id}')">`;
+  if(src) return `<img class="${cls}" src="${src}" onclick="openLightbox('${i.id}')">`;
   return `<div class="${cls}" style="display:flex;align-items:center;justify-content:center;background:var(--sand);color:var(--muted);font-size:12px">cargando foto…</div>`;
 }
 function ideaCardHTML(i){
@@ -1207,7 +1328,7 @@ function galleryItemHTML(i){
   const src=imgSrc(i);
   const cap=(i.texto||'')+(i.precio?' · 💲'+i.precio:'');
   if(i.imgId||i.img){
-    return `<div class="gallery-item" onclick="${src?`openImg('${i.id}')`:''}">
+    return `<div class="gallery-item" onclick="openLightbox('${i.id}')">
       ${src?`<img src="${src}">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">cargando…</div>`}
       ${cap?`<div class="gallery-cap">${esc(cap)}</div>`:''}
       <button class="gallery-edit no-print" onclick="event.stopPropagation();editIdea('${i.id}')">✎</button>
@@ -1331,7 +1452,57 @@ function saveIdea(id){
   if(id)Object.assign(existing,o);else{o.id=uid();o.autor=ME;S.ideas.unshift(o);}
   ideaImgData=null; ideaImgKeepId=null; closeModal(); save();
 }
-function openImg(id){const i=S.ideas.find(x=>x.id===id);if(!i)return;const src=imgSrc(i);if(!src)return;const d=document.createElement('div');d.className='imgbox';d.onclick=()=>d.remove();d.innerHTML='<img src="'+src+'">';document.body.appendChild(d);}
+let lbList=[],lbIdx=0,lbFicha=false;
+function currentFolderIdeas(){
+  if(ideaFolder==='__general__') return ideasInFolder(null);
+  if(ideaFolder) return ideasInFolder(ideaFolder);
+  return S.ideas||[];
+}
+function openLightbox(id){
+  lbList=currentFolderIdeas().filter(i=>i.imgId||i.img);
+  lbIdx=Math.max(0,lbList.findIndex(i=>i.id===id));
+  lbFicha=false;
+  document.removeEventListener('keydown',lbKey);
+  document.addEventListener('keydown',lbKey);
+  renderLightbox();
+}
+function renderLightbox(){
+  let box=document.getElementById('lightbox');
+  if(!box){ box=document.createElement('div'); box.id='lightbox'; box.className='lb'; document.body.appendChild(box);
+    box.addEventListener('click',e=>{ if(e.target===box) closeLightbox(); });
+    let sx=null; box.addEventListener('pointerdown',e=>{sx=e.clientX;});
+    box.addEventListener('pointerup',e=>{ if(sx!==null){const d=e.clientX-sx; if(Math.abs(d)>50) lbGo(d<0?1:-1); sx=null;} });
+  }
+  const i=lbList[lbIdx]; if(!i){ closeLightbox(); return; }
+  const src=imgSrc(i);
+  box.innerHTML=`
+    <div class="lb-top">
+      <span class="lb-count">${lbIdx+1} / ${lbList.length}</span>
+      <button class="lb-btn" onclick="lbFicha=!lbFicha;renderLightbox()">${lbFicha?'🖼 Ver foto':'ℹ Ver ficha'}</button>
+      <button class="lb-btn" onclick="closeLightbox()">✕ Cerrar</button>
+    </div>
+    <div class="lb-main">
+      ${lbList.length>1?`<button class="lb-nav lb-prev" onclick="event.stopPropagation();lbGo(-1)">‹</button>`:''}
+      ${lbFicha
+        ? `<div class="lb-ficha" onclick="event.stopPropagation()">
+             ${src?`<img src="${src}">`:''}
+             <div class="lb-info">
+               <div class="lb-txt">${esc(i.texto||'(sin descripción)')}</div>
+               ${i.precio?`<div class="lb-precio">💲 ${esc(i.precio)}</div>`:''}
+               ${i.link?`<a href="${esc(i.link)}" target="_blank">🔗 Abrir link</a>`:''}
+               ${i.autor?`<div class="lb-autor" style="background:${respColor(i.autor)}">${esc(i.autor)}</div>`:''}
+               <button class="btn btn-sm no-print" onclick="closeLightbox();editIdea('${i.id}')">✎ Editar</button>
+             </div>
+           </div>`
+        : (src?`<img class="lb-img" src="${src}" onclick="event.stopPropagation()">`:`<div style="color:#fff">cargando…</div>`)}
+      ${lbList.length>1?`<button class="lb-nav lb-next" onclick="event.stopPropagation();lbGo(1)">›</button>`:''}
+    </div>
+    ${!lbFicha?`<div class="lb-cap">${esc(i.texto||'')}${i.precio?' · 💲'+esc(i.precio):''}</div>`:''}`;
+}
+function lbGo(d){ if(!lbList.length)return; lbIdx=(lbIdx+d+lbList.length)%lbList.length; lbFicha=false; renderLightbox(); }
+function closeLightbox(){ const b=document.getElementById('lightbox'); if(b)b.remove(); document.removeEventListener('keydown',lbKey); }
+function lbKey(e){ if(e.key==='Escape')closeLightbox(); else if(e.key==='ArrowLeft')lbGo(-1); else if(e.key==='ArrowRight')lbGo(1); }
+function openImg(id){ openLightbox(id); }
 
 /* ============ POST-ITS ============ */
 const PI_COLORS=['#F4E7A6','#C7E1C0','#F5CBB8','#C7DCEC','#E6CCE4','#EFE3C4'];
@@ -1507,7 +1678,7 @@ const firebaseConfig = {
       _imgFetching[imgId]=true;
       db.collection('imagenes').doc(imgId).get().then(function(doc){
         _imgFetching[imgId]=false;
-        if(doc.exists && doc.data() && doc.data().d){ IMAGES[imgId]=doc.data().d; saveImagesLocal(); if(route==='ideas'){ try{ render(); }catch(e){} } }
+        if(doc.exists && doc.data() && doc.data().d){ IMAGES[imgId]=doc.data().d; saveImagesLocal(); if(route==='ideas'){ try{ render(); }catch(e){} } if(document.getElementById('lightbox')){ try{ renderLightbox(); }catch(e){} } }
       }).catch(function(){ _imgFetching[imgId]=false; });
     };
     function migrarImgs(){
