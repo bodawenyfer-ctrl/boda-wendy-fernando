@@ -355,6 +355,19 @@ table.tbl tr:hover td{background:var(--cream)}
 .folder-card .fname{font-family:'Cormorant Garamond';font-size:23px;color:var(--olive-deep);line-height:1.1}
 .folder-card .fmeta{font-size:11.5px;color:var(--muted);margin-top:3px}
 .folder-lock{position:absolute;top:10px;right:12px;font-size:12px}
+.folder-card .fico{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;font-size:30px}
+/* galería */
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.gallery-item{position:relative;border-radius:14px;overflow:hidden;box-shadow:var(--shadow);cursor:pointer;aspect-ratio:1;background:var(--sand)}
+.gallery-item img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-cap{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(46,50,39,.72));color:#fff;padding:20px 10px 9px;font-size:12.5px;line-height:1.3}
+.gallery-note{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;text-align:center;background:var(--paper);border:1px solid var(--line)}
+.gallery-note .gn{font-family:'Cormorant Garamond';font-size:19px;color:var(--olive-deep)}
+.gallery-edit{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.9);box-shadow:var(--shadow);font-size:13px}
+/* swatches de color */
+.color-row{display:flex;gap:9px;flex-wrap:wrap}
+.swatch{width:30px;height:30px;border-radius:50%;border:2px solid transparent;box-shadow:var(--shadow);cursor:pointer;transition:.15s}
+.swatch.on{border-color:var(--olive-deep);transform:scale(1.12)}
 </style>
 </head>
 <body>
@@ -409,6 +422,12 @@ let mem=null, hasLS=true;
 try{localStorage.setItem('__t','1');localStorage.removeItem('__t');}catch(e){hasLS=false;}
 function load(){try{if(hasLS){const r=localStorage.getItem(KEY);return r?JSON.parse(r):null;}return mem;}catch(e){return mem;}}
 function persist(){try{if(hasLS)localStorage.setItem(KEY,JSON.stringify(S));else mem=JSON.parse(JSON.stringify(S));}catch(e){mem=JSON.parse(JSON.stringify(S));}if(window.cloudPush)window.cloudPush();}
+/* ---- imágenes guardadas APARTE (para no pasar el límite de 1MB por documento) ---- */
+let IMAGES={};
+try{ if(hasLS){ const c=localStorage.getItem('wf_img_v1'); if(c) IMAGES=JSON.parse(c); } }catch(e){}
+function saveImagesLocal(){ try{ if(hasLS) localStorage.setItem('wf_img_v1', JSON.stringify(IMAGES)); }catch(e){} }
+let _imgFetching={};
+function imgSrc(idea){ if(idea.img) return idea.img; if(!idea.imgId) return ''; if(IMAGES[idea.imgId]) return IMAGES[idea.imgId]; if(window.fetchImage) window.fetchImage(idea.imgId); return ''; }
 let S=load();
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 
@@ -792,7 +811,9 @@ function saveUSD(){const r=parseFloat($('#usdRate').value);if(!r||r<=0){toast('I
 async function fetchBCU(){const m=$('#bcuMsg');m.textContent='Buscando...';try{const r=await fetch('https://open.er-api.com/v6/latest/USD');const j=await r.json();const v=j&&j.rates&&j.rates.UYU;if(v){$('#usdRate').value=v.toFixed(2);m.textContent='Cotización de referencia traída ✓ (podés ajustarla a la del BCU)';}else throw 0;}catch(e){m.textContent='No se pudo traer automática. Escribila a mano (mirá el BCU).';}}
 
 /* ---- CRUD Presupuesto ---- */
-function delItem(coll,id){if(!confirm('¿Eliminar este elemento?'))return;S[coll]=S[coll].filter(x=>x.id!==id);save();toast('Eliminado');}
+function delItem(coll,id){if(!confirm('¿Eliminar este elemento?'))return;
+  if(coll==='ideas'){const it=(S.ideas||[]).find(x=>x.id===id);if(it&&it.imgId){delete IMAGES[it.imgId];saveImagesLocal();if(window.cloudDeleteImage)window.cloudDeleteImage(it.imgId);}}
+  S[coll]=S[coll].filter(x=>x.id!==id);save();toast('Eliminado');}
 function editBudget(id){
   const b=id?S.budget.find(x=>x.id===id):{item:'',categoria:'General',total:0,sena:0,senaFecha:'',estado:'pendiente',proveedorId:null,nota:''};
   const cats=[...new Set(['General',...S.budget.map(x=>x.categoria||'General')])];
@@ -1156,16 +1177,24 @@ function saveProv(id){const o={nombre:$('#p_nom').value.trim(),servicio:$('#p_se
 
 /* ============ IDEAS (con carpetas) ============ */
 let ideaFolder=null; // null = lista de carpetas · '__general__' = General · id = carpeta
+let ideaView='fichas'; // 'fichas' | 'galeria'
+const FOLDER_COLORS=['#9EAB8C','#6E7C8A','#B4863E','#A98E6B','#8B6E8C','#5E8B7E','#A87E7E','#7A8C6E'];
 function canSeeFolder(acc){ if(acc==='novia') return ME==='Wendy'||ME==='Wedding planner'; if(acc==='novio') return ME==='Fernando'||ME==='Wedding planner'; return true; }
 function accIcon(a){ return a==='novia'?'👰':a==='novio'?'🤵':'📁'; }
 function accTxt(a){ return a==='novia'?'Privada · novia':a==='novio'?'Privada · novio':'Compartida'; }
 function folderById(id){ return (S.ideaFolders||[]).find(f=>f.id===id); }
 function ideasInFolder(id){ return (S.ideas||[]).filter(i=>(i.folderId||null)===(id||null)); }
 
+function ideaImgTag(i,cls){
+  const src=imgSrc(i);
+  if(!i.imgId && !i.img) return '';
+  if(src) return `<img class="${cls}" src="${src}" onclick="openImg('${i.id}')">`;
+  return `<div class="${cls}" style="display:flex;align-items:center;justify-content:center;background:var(--sand);color:var(--muted);font-size:12px">cargando foto…</div>`;
+}
 function ideaCardHTML(i){
   return `<div class="card idea-item">
-    ${i.img?`<img class="idea-img" src="${i.img}" onclick="openImg('${i.id}')">`:''}
-    <div class="it" style="margin-top:${i.img?'10px':'0'}">${esc(i.texto)}</div>
+    ${ideaImgTag(i,'idea-img')}
+    <div class="it" style="margin-top:${(i.imgId||i.img)?'10px':'0'}">${esc(i.texto)}</div>
     ${i.precio?`<div style="font-size:13.5px;color:var(--olive-deep);font-weight:500;margin-top:5px">💲 ${esc(i.precio)}</div>`:''}
     ${i.link?`<a class="il" href="${esc(i.link)}" target="_blank">🔗 ${esc(i.link.replace(/^https?:\/\//,'').slice(0,30))}…</a>`:''}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
@@ -1174,20 +1203,38 @@ function ideaCardHTML(i){
     </div>
   </div>`;
 }
+function galleryItemHTML(i){
+  const src=imgSrc(i);
+  const cap=(i.texto||'')+(i.precio?' · 💲'+i.precio:'');
+  if(i.imgId||i.img){
+    return `<div class="gallery-item" onclick="${src?`openImg('${i.id}')`:''}">
+      ${src?`<img src="${src}">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">cargando…</div>`}
+      ${cap?`<div class="gallery-cap">${esc(cap)}</div>`:''}
+      <button class="gallery-edit no-print" onclick="event.stopPropagation();editIdea('${i.id}')">✎</button>
+    </div>`;
+  }
+  return `<div class="gallery-item gallery-note" onclick="editIdea('${i.id}')"><div class="gn">${esc(i.texto)}</div>${i.precio?`<div style="font-size:12px;color:var(--olive-mid);margin-top:6px">💲 ${esc(i.precio)}</div>`:''}</div>`;
+}
 
 function vIdeas(){
   if(ideaFolder){
     let f, ideas;
-    if(ideaFolder==='__general__'){ f={id:'__general__',nombre:'General',acceso:'todos'}; ideas=ideasInFolder(null); }
+    if(ideaFolder==='__general__'){ f={id:'__general__',nombre:'General',acceso:'todos',color:'#9EAB8C'}; ideas=ideasInFolder(null); }
     else { f=folderById(ideaFolder); if(!f || !canSeeFolder(f.acceso)){ ideaFolder=null; return vIdeas(); } ideas=ideasInFolder(f.id); }
     const real = ideaFolder!=='__general__';
+    const body = ideas.length
+      ? (ideaView==='galeria'
+          ? `<div class="gallery-grid">${ideas.map(galleryItemHTML).join('')}</div>`
+          : `<div class="idea-grid">${ideas.map(ideaCardHTML).join('')}</div>`)
+      : '<div class="empty"><div class="ei">💡</div><h3>Carpeta vacía</h3><p>Sumá ideas, fotos, precios y links con "+ Idea"</p></div>';
     $('#view').innerHTML=`
     <div class="view-head">
-      <div><h1>${accIcon(f.acceso)} ${esc(f.nombre)}</h1>
-        <div class="sub"><button class="btn-ghost btn-sm no-print" onclick="ideaFolder=null;render()" style="text-decoration:underline;color:var(--olive-mid)">← Volver a carpetas</button> · ${accTxt(f.acceso)}</div></div>
-      <div class="head-actions no-print">${real?`<button class="btn" onclick="editFolder('${f.id}')">✎ Carpeta</button>`:''}<button class="btn btn-pri" onclick="editIdea()">+ Idea</button></div>
-    </div>
-    ${ideas.length?`<div class="idea-grid">${ideas.map(ideaCardHTML).join('')}</div>`:'<div class="empty"><div class="ei">💡</div><h3>Carpeta vacía</h3><p>Sumá ideas, fotos, precios y links con "+ Idea"</p></div>'}`;
+      <div><h1><span style="color:${f.color||'#9EAB8C'}">${accIcon(f.acceso)}</span> ${esc(f.nombre)}</h1>
+        <div class="sub"><button class="btn-ghost btn-sm no-print" onclick="ideaFolder=null;render()" style="text-decoration:underline;color:var(--olive-mid)">← Volver a carpetas</button> · ${accTxt(f.acceso)} · ${ideas.length} idea(s)</div></div>
+      <div class="head-actions no-print">
+        <div class="seg"><button class="${ideaView==='fichas'?'on':''}" onclick="ideaView='fichas';render()">Fichas</button><button class="${ideaView==='galeria'?'on':''}" onclick="ideaView='galeria';render()">Galería</button></div>
+        ${real?`<button class="btn" onclick="editFolder('${f.id}')">✎ Carpeta</button>`:''}<button class="btn btn-pri" onclick="editIdea()">+ Idea</button></div>
+    </div>${body}`;
     return;
   }
   const general=ideasInFolder(null);
@@ -1196,18 +1243,20 @@ function vIdeas(){
   <div class="view-head"><div><h1>Ideas</h1><div class="sub">Organizá la inspiración en carpetas · fotos, precios y links</div></div>
     <button class="btn btn-pri no-print" onclick="editFolder()">+ Carpeta</button></div>
   <div class="folder-grid">
-    <div class="card folder-card" onclick="openFolder('__general__')"><div class="fico">📁</div><div class="fname">General</div><div class="fmeta">${general.length} idea(s) · Compartida</div></div>
-    ${folders.map(f=>`<div class="card folder-card" onclick="openFolder('${f.id}')">${f.acceso!=='todos'?'<span class="folder-lock">🔒</span>':''}<div class="fico">${accIcon(f.acceso)}</div><div class="fname">${esc(f.nombre)}</div><div class="fmeta">${ideasInFolder(f.id).length} idea(s) · ${accTxt(f.acceso)}</div></div>`).join('')}
+    <div class="card folder-card" onclick="openFolder('__general__')"><div class="fico" style="background:#9EAB8C22">📁</div><div class="fname">General</div><div class="fmeta">${general.length} idea(s) · Compartida</div></div>
+    ${folders.map(f=>`<div class="card folder-card" onclick="openFolder('${f.id}')">${f.acceso!=='todos'?'<span class="folder-lock">🔒</span>':''}<div class="fico" style="background:${(f.color||'#9EAB8C')}22">${accIcon(f.acceso)}</div><div class="fname">${esc(f.nombre)}</div><div class="fmeta">${ideasInFolder(f.id).length} idea(s) · ${accTxt(f.acceso)}</div></div>`).join('')}
   </div>
   ${!folders.length?'<div class="sub" style="margin-top:16px;color:var(--muted)">Tip: creá carpetas como "Vestidos", "De la novia" o "Del novio" con el botón <strong>+ Carpeta</strong>.</div>':''}`;
 }
 function openFolder(id){ ideaFolder=id; render(); }
 
 function editFolder(id){
-  const f=id?folderById(id):{nombre:'',acceso:'todos'};
+  const f=id?folderById(id):{nombre:'',acceso:'todos',color:FOLDER_COLORS[0]};
+  folderColorTmp=f.color||FOLDER_COLORS[0];
   modal(`<div class="modal-h"><h3>${id?'Editar carpeta':'Nueva carpeta'}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
   <div class="modal-b">
     <div class="field"><label>Nombre</label><input id="fo_nom" value="${esc(f.nombre)}" placeholder="ej. Vestidos"></div>
+    <div class="field"><label>Color</label><div class="color-row" id="foColors">${FOLDER_COLORS.map(c=>`<button type="button" class="swatch${c===folderColorTmp?' on':''}" style="background:${c}" onclick="pickFolderColor('${c}')"></button>`).join('')}</div></div>
     <div class="field"><label>¿Quién puede verla?</label><select id="fo_acc">
       <option value="todos"${f.acceso==='todos'?' selected':''}>Todos (Wendy, Fernando y la planner)</option>
       <option value="novia"${f.acceso==='novia'?' selected':''}>Solo la novia (Wendy + planner) — Fernando no la ve</option>
@@ -1217,8 +1266,11 @@ function editFolder(id){
   </div>
   <div class="modal-f"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-pri" onclick="saveFolder('${id||''}')">Guardar</button></div>`);
 }
+let folderColorTmp=FOLDER_COLORS[0];
+function pickFolderColor(c){ folderColorTmp=c; document.querySelectorAll('#foColors .swatch').forEach(function(b){ b.classList.toggle('on', b.style.background.replace(/\s/g,'')===hexToRgb(c)); }); }
+function hexToRgb(h){ const n=parseInt(h.slice(1),16); return 'rgb('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+')'; }
 function saveFolder(id){
-  const o={nombre:$('#fo_nom').value.trim(),acceso:$('#fo_acc').value};
+  const o={nombre:$('#fo_nom').value.trim(),acceso:$('#fo_acc').value,color:folderColorTmp};
   if(!o.nombre){toast('Poné un nombre');return;}
   if(!S.ideaFolders)S.ideaFolders=[];
   if(id)Object.assign(folderById(id),o);else{o.id=uid();S.ideaFolders.push(o);}
@@ -1231,10 +1283,18 @@ function delFolder(id){
   if(ideaFolder===id) ideaFolder=null;
   closeModal();save();
 }
-let ideaImgTmp=null;
+let ideaImgData=null, ideaImgKeepId=null;
+function ideaPrevHTML(){
+  const src = ideaImgData || (ideaImgKeepId?IMAGES[ideaImgKeepId]:null);
+  if(src) return '<img src="'+src+'"><button class="btn btn-sm" style="margin-left:8px;color:var(--danger)" onclick="quitarIdeaFoto()">Quitar foto</button>';
+  if(ideaImgKeepId) return '<span style="color:var(--muted);font-size:12px">Foto guardada · </span><button class="btn btn-sm" style="color:var(--danger)" onclick="quitarIdeaFoto()">Quitar</button>';
+  return '';
+}
+function quitarIdeaFoto(){ ideaImgData=null; ideaImgKeepId=null; const el=document.getElementById('ideaPrev'); if(el) el.innerHTML=ideaPrevHTML(); }
 function editIdea(id){
-  const i=id?S.ideas.find(x=>x.id===id):{texto:'',link:'',img:null,precio:'',folderId:(ideaFolder&&ideaFolder!=='__general__')?ideaFolder:null};
-  ideaImgTmp=i.img||null;
+  const i=id?S.ideas.find(x=>x.id===id):{texto:'',link:'',precio:'',folderId:(ideaFolder&&ideaFolder!=='__general__')?ideaFolder:null};
+  ideaImgData=null; ideaImgKeepId=i.imgId||null;
+  if(i.imgId && !IMAGES[i.imgId] && window.fetchImage) window.fetchImage(i.imgId);
   const folders=(S.ideaFolders||[]).filter(f=>canSeeFolder(f.acceso));
   modal(`<div class="modal-h"><h3>${id?'Editar idea':'Nueva idea'}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
   <div class="modal-b">
@@ -1244,20 +1304,34 @@ function editIdea(id){
   <div class="field"><label>Link (Pinterest / Instagram / tienda, opcional)</label><input id="i_link" value="${esc(i.link||'')}" placeholder="https://..."></div>
   <div class="field"><label>Foto (opcional)</label>
     <label class="file-btn">📷 Elegir foto<input type="file" accept="image/*" style="display:none" onchange="onIdeaImg(this)"></label>
-    <div id="ideaPrev" style="margin-top:10px">${ideaImgTmp?`<img src="${ideaImgTmp}"><button class="btn btn-sm" style="margin-left:8px;color:var(--danger)" onclick="ideaImgTmp=null;document.getElementById('ideaPrev').innerHTML=''">Quitar foto</button>`:''}</div>
+    <div id="ideaPrev" style="margin-top:10px">${ideaPrevHTML()}</div>
   </div></div>
   <div class="modal-f"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-pri" onclick="saveIdea('${id||''}')">Guardar</button></div>`);
 }
 function onIdeaImg(input){const f=input.files[0];if(!f)return;const r=new FileReader();
-  r.onload=e=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');const max=800;let w=img.width,h=img.height;
+  r.onload=e=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');const max=1000;let w=img.width,h=img.height;
     if(w>h&&w>max){h=h*max/w;w=max;}else if(h>=w&&h>max){w=w*max/h;h=max;}c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
-    ideaImgTmp=c.toDataURL('image/jpeg',0.6);
-    document.getElementById('ideaPrev').innerHTML='<img src="'+ideaImgTmp+'"><button class="btn btn-sm" style="margin-left:8px;color:var(--danger)" onclick="ideaImgTmp=null;document.getElementById(\'ideaPrev\').innerHTML=\'\'">Quitar foto</button>';};img.src=e.target.result;};
+    ideaImgData=c.toDataURL('image/jpeg',0.72); ideaImgKeepId=null;
+    const el=document.getElementById('ideaPrev'); if(el) el.innerHTML=ideaPrevHTML();};img.src=e.target.result;};
   r.readAsDataURL(f);}
-function saveIdea(id){const o={texto:$('#i_txt').value.trim(),link:$('#i_link').value.trim(),img:ideaImgTmp,precio:$('#i_precio').value.trim(),folderId:$('#i_folder').value||null};
-  if(!o.texto&&!o.img){toast('Escribí la idea o sumá una foto');return;}
-  if(id)Object.assign(S.ideas.find(x=>x.id===id),o);else{o.id=uid();o.autor=ME;S.ideas.unshift(o);}ideaImgTmp=null;closeModal();save();}
-function openImg(id){const i=S.ideas.find(x=>x.id===id);if(!i||!i.img)return;const d=document.createElement('div');d.className='imgbox';d.onclick=()=>d.remove();d.innerHTML='<img src="'+i.img+'">';document.body.appendChild(d);}
+function saveIdea(id){
+  const existing = id?S.ideas.find(x=>x.id===id):null;
+  const prevImgId = existing?existing.imgId:null;
+  const o={texto:$('#i_txt').value.trim(),link:$('#i_link').value.trim(),precio:$('#i_precio').value.trim(),folderId:$('#i_folder').value||null};
+  let newImgId = ideaImgKeepId;                 // por defecto: conservar la que estaba
+  if(ideaImgData){                              // subió una nueva
+    newImgId = uid(); IMAGES[newImgId]=ideaImgData; if(window.cloudPushImage) window.cloudPushImage(newImgId, ideaImgData);
+    if(prevImgId && prevImgId!==newImgId){ delete IMAGES[prevImgId]; if(window.cloudDeleteImage) window.cloudDeleteImage(prevImgId); }
+  } else if(!ideaImgKeepId && prevImgId){       // la quitó
+    delete IMAGES[prevImgId]; if(window.cloudDeleteImage) window.cloudDeleteImage(prevImgId);
+  }
+  o.imgId = newImgId || null;
+  if(!o.texto && !o.imgId){ toast('Escribí la idea o sumá una foto'); return; }
+  saveImagesLocal();
+  if(id)Object.assign(existing,o);else{o.id=uid();o.autor=ME;S.ideas.unshift(o);}
+  ideaImgData=null; ideaImgKeepId=null; closeModal(); save();
+}
+function openImg(id){const i=S.ideas.find(x=>x.id===id);if(!i)return;const src=imgSrc(i);if(!src)return;const d=document.createElement('div');d.className='imgbox';d.onclick=()=>d.remove();d.innerHTML='<img src="'+src+'">';document.body.appendChild(d);}
 
 /* ============ POST-ITS ============ */
 const PI_COLORS=['#F4E7A6','#C7E1C0','#F5CBB8','#C7DCEC','#E6CCE4','#EFE3C4'];
@@ -1419,19 +1493,37 @@ const firebaseConfig = {
       if(!ready)return;
       clearTimeout(pushTimer);
       pushTimer=setTimeout(function(){
-        S._rev=uid(); myRev=S._rev;
+        const rev=uid(); S._rev=rev;
         ref.set(JSON.parse(JSON.stringify(S)))
-          .then(function(){dot('Sincronizado con la nube ✓','#5E7B4E');})
+          .then(function(){ myRev=rev; dot('Sincronizado con la nube ✓','#5E7B4E'); })
           .catch(function(e){console.error('cloud push',e);dot('Sin conexión (guardado en este equipo)','#B4863E');});
       },500);
     };
+    /* imágenes: cada una en su propio documento (no pesan sobre el estado principal) */
+    window.cloudPushImage=function(imgId,dataUrl){ db.collection('imagenes').doc(imgId).set({d:dataUrl}).catch(function(e){console.error('img push',e);}); };
+    window.cloudDeleteImage=function(imgId){ db.collection('imagenes').doc(imgId).delete().catch(function(){}); };
+    window.fetchImage=function(imgId){
+      if(_imgFetching[imgId]||IMAGES[imgId])return;
+      _imgFetching[imgId]=true;
+      db.collection('imagenes').doc(imgId).get().then(function(doc){
+        _imgFetching[imgId]=false;
+        if(doc.exists && doc.data() && doc.data().d){ IMAGES[imgId]=doc.data().d; saveImagesLocal(); if(route==='ideas'){ try{ render(); }catch(e){} } }
+      }).catch(function(){ _imgFetching[imgId]=false; });
+    };
+    function migrarImgs(){
+      let changed=false;
+      (S.ideas||[]).forEach(function(i){ if(i.img){ const imgId=i.imgId||uid(); IMAGES[imgId]=i.img; window.cloudPushImage(imgId,i.img); i.imgId=imgId; delete i.img; changed=true; } });
+      if(changed){ saveImagesLocal(); persist(); }
+    }
 
     ref.onSnapshot(function(snap){
-      if(!snap.exists){ ready=true; window.cloudPush(); dot('Sincronizado con la nube ✓','#5E7B4E'); return; }
+      if(!snap.exists){ ready=true; migrarImgs(); window.cloudPush(); dot('Sincronizado con la nube ✓','#5E7B4E'); return; }
       const data=snap.data();
       if(data._rev && data._rev===myRev){ ready=true; dot('Sincronizado con la nube ✓','#5E7B4E'); return; }
       S=data;
       if(S.meta) S.meta.user=ME;
+      ready=true;
+      migrarImgs();
       try{ if(hasLS) localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
       ready=true;
       const modalOpen=document.getElementById('modalBg') && document.getElementById('modalBg').classList.contains('show');
