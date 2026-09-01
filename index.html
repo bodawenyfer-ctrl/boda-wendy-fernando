@@ -836,9 +836,7 @@ function saveCompra(id){
 
 /* ============ INVITADOS ============ */
 let invFilter='todos',invSearch='',invGroup='todos';
-function vInvitados(){
-  const gcAll=guestCounts(S.guests);const conf=guestCounts(S.guests.filter(g=>g.estado==='confirmado'));
-  const groups=[...new Set(S.guests.map(g=>g.grupo))];
+function invListHTML(){
   let list=S.guests.filter(g=>{
     if(invFilter!=='todos'&&g.estado!==invFilter)return false;
     if(invGroup!=='todos'&&g.grupo!==invGroup)return false;
@@ -863,6 +861,11 @@ function vInvitados(){
     });
     html+='</div>';
   });
+  return html||'<div class="empty"><div class="ei">🔍</div><h3>Sin resultados</h3></div>';
+}
+function vInvitados(){
+  const gcAll=guestCounts(S.guests);const conf=guestCounts(S.guests.filter(g=>g.estado==='confirmado'));
+  const groups=[...new Set(S.guests.map(g=>g.grupo))];
   $('#view').innerHTML=`
   <div class="view-head">
     <div><h1>Invitados</h1><div class="sub">Fecha límite para confirmar: ${S.config.limite?fmtDate(S.config.limite):'sin definir'} <button class="btn-ghost btn-sm no-print" onclick="setLimite()" style="text-decoration:underline;color:var(--olive-mid)">editar</button></div></div>
@@ -876,18 +879,18 @@ function vInvitados(){
     <div class="card gc"><div class="v" style="color:var(--ok)">${conf.tot}</div><div class="l">Confirmados</div></div>
   </div>
   <div class="filters no-print">
-    <div class="search"><span>🔍</span><input placeholder="Buscar invitado o grupo" value="${esc(invSearch)}" oninput="invSearch=this.value;renderInvList()"></div>
+    <div class="search"><span>🔍</span><input id="invSearchBox" placeholder="Buscar invitado o grupo" value="${esc(invSearch)}" oninput="invSearch=this.value;renderInvList()"></div>
     <select class="status-sel" style="padding:8px 10px" onchange="invGroup=this.value;render()"><option value="todos">Todos los grupos</option>${groups.map(g=>`<option value="${esc(g)}"${invGroup===g?' selected':''}>${esc(g)}</option>`).join('')}</select>
     ${[['todos','Todos'],['confirmado','Confirmados'],['invitado','Invitados'],['noviene','No vienen'],['pendiente','Pendientes']].map(([k,l])=>`<button class="chip ${invFilter===k?'on':''}" onclick="invFilter='${k}';render()">${l}</button>`).join('')}
   </div>
-  <div id="invList">${html||'<div class="empty"><div class="ei">🔍</div><h3>Sin resultados</h3></div>'}</div>
+  <div id="invList">${invListHTML()}</div>
 
   <div class="view-head" style="margin-top:26px"><h2 style="font-size:26px">💐 Damas de honor</h2><button class="btn btn-sm btn-pri no-print" onclick="editDama()">+ Dama</button></div>
   <div class="card" style="padding:14px 18px;display:flex;gap:10px;flex-wrap:wrap">
     ${S.damas.map(d=>`<span class="badge b-ok" style="padding:7px 14px;font-size:13px">${esc(d.nombre)} <button class="icon-btn no-print" style="width:18px;height:18px" onclick="delItem('damas','${d.id}')">✕</button></span>`).join('')}
   </div>`;
 }
-function renderInvList(){/* light refresh */ const cur=route;render();}
+function renderInvList(){const el=document.getElementById('invList');if(el)el.innerHTML=invListHTML();}
 function setEstado(id,e){S.guests.find(g=>g.id===id).estado=e;save();}
 function setLimite(){const v=prompt('Fecha límite para confirmar (AAAA-MM-DD):',S.config.limite||'');if(v!==null){S.config.limite=v.trim();save();}}
 function recordatorio(){const pend=S.guests.filter(g=>g.estado==='invitado'||g.estado==='pendiente');
@@ -1354,7 +1357,17 @@ const firebaseConfig = {
       ready=true;
       const modalOpen=document.getElementById('modalBg') && document.getElementById('modalBg').classList.contains('show');
       const appVisible=document.getElementById('app') && !document.getElementById('app').classList.contains('hidden');
-      if(ME && appVisible && !modalOpen){ try{ buildNav(); render(); }catch(e){console.error(e);} }
+      const ae=document.activeElement;
+      const typing=ae && (ae.tagName==='INPUT'||ae.tagName==='TEXTAREA'||ae.tagName==='SELECT');
+      if(ME && appVisible && !modalOpen && !typing){ try{ buildNav(); render(); }catch(e){console.error(e);} }
+      else {
+        clearTimeout(window._syncFlush);
+        window._syncFlush=setTimeout(function(){
+          const a2=document.activeElement, t2=a2&&(a2.tagName==='INPUT'||a2.tagName==='TEXTAREA'||a2.tagName==='SELECT');
+          const m2=document.getElementById('modalBg').classList.contains('show');
+          if(ME && document.getElementById('app') && !document.getElementById('app').classList.contains('hidden') && !t2 && !m2){ try{ buildNav(); render(); }catch(e){} }
+        },1600);
+      }
       dot('Sincronizado con la nube ✓','#5E7B4E');
     }, function(err){ console.error('onSnapshot',err); dot('Sin conexión (guardado en este equipo)','#B4863E'); });
 
