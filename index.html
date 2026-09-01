@@ -346,6 +346,15 @@ table.tbl tr:hover td{background:var(--cream)}
 .pin-btns{display:flex;gap:10px;justify-content:center}
 .pin-msg{font-size:12.5px;color:var(--danger);min-height:16px;text-align:center}
 .pin-forgot{font-size:12px;color:var(--olive-mid);cursor:pointer;text-decoration:underline;text-align:center}
+
+/* carpetas de ideas */
+.folder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}
+.folder-card{padding:22px 18px;text-align:center;cursor:pointer;transition:.16s;position:relative}
+.folder-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);border-color:var(--sage)}
+.folder-card .fico{font-size:38px;line-height:1;margin-bottom:8px}
+.folder-card .fname{font-family:'Cormorant Garamond';font-size:23px;color:var(--olive-deep);line-height:1.1}
+.folder-card .fmeta{font-size:11.5px;color:var(--muted);margin-top:3px}
+.folder-lock{position:absolute;top:10px;right:12px;font-size:12px}
 </style>
 </head>
 <body>
@@ -436,6 +445,7 @@ function seed(){
     config:{usdRate:null,usdDate:''},
     responsables:['Wendy','Fernando','Wedding planner'],
     pins:{},
+    ideaFolders:[],
     navOrder:['inicio','presupuesto','invitados','mesas','cronograma','calendario','proveedores','ideas','postits','pendientes']
   };
   persist();
@@ -445,6 +455,7 @@ if(!S || !S.guests){seed();}
 if(S && !S.navOrder){S.navOrder=['inicio','presupuesto','invitados','mesas','cronograma','calendario','proveedores','ideas','postits','pendientes'];persist();}
 if(S && !S.responsables){S.responsables=['Wendy','Fernando','Wedding planner'];persist();}
 if(S && !S.pins){S.pins={};persist();}
+if(S && !S.ideaFolders){S.ideaFolders=[];persist();}
 
 /* ============ HELPERS ============ */
 const $=(s,c=document)=>c.querySelector(s);
@@ -473,7 +484,9 @@ function famColor(g){return (S.groupColors&&S.groupColors[g.grupo])||'#8A926F';}
 /* modal */
 function modal(html){const bg=$('#modalBg');$('#modal').innerHTML=html;bg.classList.add('show');}
 function closeModal(){$('#modalBg').classList.remove('show');}
-$('#modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
+let _mdOnBg=false;
+$('#modalBg').addEventListener('pointerdown',e=>{_mdOnBg=(e.target.id==='modalBg');});
+$('#modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg'&&_mdOnBg)closeModal();});
 
 /* ============ LOGIN + PIN ============ */
 let ME=(function(){try{return localStorage.getItem('wf_me')||null;}catch(e){return null;}})();
@@ -970,10 +983,11 @@ function mesaHTML(t){
 }
 function setBase(b){S.mesas.base=b;save();}
 function editMesa(id){
-  const t=id?S.mesas.tables.find(x=>x.id===id):{nombre:'Mesa '+(S.mesas.tables.length+1),capacidad:10,forma:'circle'};
+  const sug='Mesa '+(S.mesas.tables.length+1);
+  const t=id?S.mesas.tables.find(x=>x.id===id):{nombre:'',capacidad:10,forma:'circle'};
   modal(`<div class="modal-h"><h3>${id?'Editar mesa':'Nueva mesa'}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
   <div class="modal-b">
-    <div class="field"><label>Nombre</label><input id="m_nom" value="${esc(t.nombre)}"></div>
+    <div class="field"><label>Nombre</label><input id="m_nom" value="${esc(t.nombre)}" placeholder="${esc(sug)}"></div>
     <div class="row2">
       <div class="field"><label>Capacidad (lugares)</label><input id="m_cap" type="number" min="1" value="${t.capacidad}"></div>
       <div class="field"><label>Forma</label><select id="m_forma"><option value="circle"${t.forma!=='rect'?' selected':''}>Redonda</option><option value="rect"${t.forma==='rect'?' selected':''}>Rectangular</option></select></div>
@@ -983,7 +997,7 @@ function editMesa(id){
   <div class="modal-f"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-pri" onclick="saveMesa('${id||''}')">Guardar</button></div>`);
 }
 function saveMesa(id){
-  const o={nombre:$('#m_nom').value.trim()||'Mesa',capacidad:parseInt($('#m_cap').value)||1,forma:$('#m_forma').value};
+  const o={nombre:$('#m_nom').value.trim()||('Mesa '+(S.mesas.tables.length+1)),capacidad:parseInt($('#m_cap').value)||1,forma:$('#m_forma').value};
   if(id){Object.assign(S.mesas.tables.find(x=>x.id===id),o);}
   else{o.id=uid();o.seats=[];o.x=60+S.mesas.tables.length%5*150;o.y=70+Math.floor(S.mesas.tables.length/5)*160;S.mesas.tables.push(o);}
   closeModal();save();toast('Mesa guardada');
@@ -1140,29 +1154,94 @@ function saveProv(id){const o={nombre:$('#p_nom').value.trim(),servicio:$('#p_se
   if(!o.nombre){toast('Poné un nombre');return;}
   if(id)Object.assign(S.proveedores.find(x=>x.id===id),o);else{o.id=uid();S.proveedores.push(o);}closeModal();save();toast('Proveedor guardado');}
 
-/* ============ IDEAS ============ */
+/* ============ IDEAS (con carpetas) ============ */
+let ideaFolder=null; // null = lista de carpetas · '__general__' = General · id = carpeta
+function canSeeFolder(acc){ if(acc==='novia') return ME==='Wendy'||ME==='Wedding planner'; if(acc==='novio') return ME==='Fernando'||ME==='Wedding planner'; return true; }
+function accIcon(a){ return a==='novia'?'👰':a==='novio'?'🤵':'📁'; }
+function accTxt(a){ return a==='novia'?'Privada · novia':a==='novio'?'Privada · novio':'Compartida'; }
+function folderById(id){ return (S.ideaFolders||[]).find(f=>f.id===id); }
+function ideasInFolder(id){ return (S.ideas||[]).filter(i=>(i.folderId||null)===(id||null)); }
+
+function ideaCardHTML(i){
+  return `<div class="card idea-item">
+    ${i.img?`<img class="idea-img" src="${i.img}" onclick="openImg('${i.id}')">`:''}
+    <div class="it" style="margin-top:${i.img?'10px':'0'}">${esc(i.texto)}</div>
+    ${i.precio?`<div style="font-size:13.5px;color:var(--olive-deep);font-weight:500;margin-top:5px">💲 ${esc(i.precio)}</div>`:''}
+    ${i.link?`<a class="il" href="${esc(i.link)}" target="_blank">🔗 ${esc(i.link.replace(/^https?:\/\//,'').slice(0,30))}…</a>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+      <span class="idea-author" style="background:${respColor(i.autor)}">${esc(i.autor)}</span>
+      <span class="no-print"><button class="icon-btn" onclick="editIdea('${i.id}')">✎</button><button class="icon-btn" onclick="delItem('ideas','${i.id}')">🗑</button></span>
+    </div>
+  </div>`;
+}
+
 function vIdeas(){
+  if(ideaFolder){
+    let f, ideas;
+    if(ideaFolder==='__general__'){ f={id:'__general__',nombre:'General',acceso:'todos'}; ideas=ideasInFolder(null); }
+    else { f=folderById(ideaFolder); if(!f || !canSeeFolder(f.acceso)){ ideaFolder=null; return vIdeas(); } ideas=ideasInFolder(f.id); }
+    const real = ideaFolder!=='__general__';
+    $('#view').innerHTML=`
+    <div class="view-head">
+      <div><h1>${accIcon(f.acceso)} ${esc(f.nombre)}</h1>
+        <div class="sub"><button class="btn-ghost btn-sm no-print" onclick="ideaFolder=null;render()" style="text-decoration:underline;color:var(--olive-mid)">← Volver a carpetas</button> · ${accTxt(f.acceso)}</div></div>
+      <div class="head-actions no-print">${real?`<button class="btn" onclick="editFolder('${f.id}')">✎ Carpeta</button>`:''}<button class="btn btn-pri" onclick="editIdea()">+ Idea</button></div>
+    </div>
+    ${ideas.length?`<div class="idea-grid">${ideas.map(ideaCardHTML).join('')}</div>`:'<div class="empty"><div class="ei">💡</div><h3>Carpeta vacía</h3><p>Sumá ideas, fotos, precios y links con "+ Idea"</p></div>'}`;
+    return;
+  }
+  const general=ideasInFolder(null);
+  const folders=(S.ideaFolders||[]).filter(f=>canSeeFolder(f.acceso));
   $('#view').innerHTML=`
-  <div class="view-head"><div><h1>Ideas</h1><div class="sub">Inspiración para la boda · sumá fotos y links · queda marcado quién la puso</div></div>
-    <button class="btn btn-pri no-print" onclick="editIdea()">+ Idea</button></div>
-  ${S.ideas.length?`<div class="idea-grid">${S.ideas.map(i=>`
-    <div class="card idea-item">
-      ${i.img?`<img class="idea-img" src="${i.img}" onclick="openImg('${i.id}')">`:''}
-      <div class="it" style="margin-top:${i.img?'10px':'0'}">${esc(i.texto)}</div>
-      ${i.link?`<a class="il" href="${esc(i.link)}" target="_blank">🔗 ${esc(i.link.replace(/^https?:\/\//,'').slice(0,30))}…</a>`:''}
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
-        <span class="idea-author" style="background:${respColor(i.autor)}">${esc(i.autor)}</span>
-        <span class="no-print"><button class="icon-btn" onclick="editIdea('${i.id}')">✎</button><button class="icon-btn" onclick="delItem('ideas','${i.id}')">🗑</button></span>
-      </div>
-    </div>`).join('')}</div>`:'<div class="empty"><div class="ei">💡</div><h3>Sin ideas todavía</h3><p>Pegá links de Pinterest o Instagram, sumá una foto, o escribí lo que se te ocurra</p></div>'}`;
+  <div class="view-head"><div><h1>Ideas</h1><div class="sub">Organizá la inspiración en carpetas · fotos, precios y links</div></div>
+    <button class="btn btn-pri no-print" onclick="editFolder()">+ Carpeta</button></div>
+  <div class="folder-grid">
+    <div class="card folder-card" onclick="openFolder('__general__')"><div class="fico">📁</div><div class="fname">General</div><div class="fmeta">${general.length} idea(s) · Compartida</div></div>
+    ${folders.map(f=>`<div class="card folder-card" onclick="openFolder('${f.id}')">${f.acceso!=='todos'?'<span class="folder-lock">🔒</span>':''}<div class="fico">${accIcon(f.acceso)}</div><div class="fname">${esc(f.nombre)}</div><div class="fmeta">${ideasInFolder(f.id).length} idea(s) · ${accTxt(f.acceso)}</div></div>`).join('')}
+  </div>
+  ${!folders.length?'<div class="sub" style="margin-top:16px;color:var(--muted)">Tip: creá carpetas como "Vestidos", "De la novia" o "Del novio" con el botón <strong>+ Carpeta</strong>.</div>':''}`;
+}
+function openFolder(id){ ideaFolder=id; render(); }
+
+function editFolder(id){
+  const f=id?folderById(id):{nombre:'',acceso:'todos'};
+  modal(`<div class="modal-h"><h3>${id?'Editar carpeta':'Nueva carpeta'}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
+  <div class="modal-b">
+    <div class="field"><label>Nombre</label><input id="fo_nom" value="${esc(f.nombre)}" placeholder="ej. Vestidos"></div>
+    <div class="field"><label>¿Quién puede verla?</label><select id="fo_acc">
+      <option value="todos"${f.acceso==='todos'?' selected':''}>Todos (Wendy, Fernando y la planner)</option>
+      <option value="novia"${f.acceso==='novia'?' selected':''}>Solo la novia (Wendy + planner) — Fernando no la ve</option>
+      <option value="novio"${f.acceso==='novio'?' selected':''}>Solo el novio (Fernando + planner) — Wendy no la ve</option>
+    </select></div>
+    ${id?`<button class="btn btn-sm" onclick="delFolder('${id}')" style="color:var(--danger)">🗑 Eliminar carpeta</button><div style="font-size:11px;color:var(--muted);margin-top:6px">Las ideas de adentro pasan a General.</div>`:''}
+  </div>
+  <div class="modal-f"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn btn-pri" onclick="saveFolder('${id||''}')">Guardar</button></div>`);
+}
+function saveFolder(id){
+  const o={nombre:$('#fo_nom').value.trim(),acceso:$('#fo_acc').value};
+  if(!o.nombre){toast('Poné un nombre');return;}
+  if(!S.ideaFolders)S.ideaFolders=[];
+  if(id)Object.assign(folderById(id),o);else{o.id=uid();S.ideaFolders.push(o);}
+  closeModal();save();
+}
+function delFolder(id){
+  if(!confirm('¿Eliminar la carpeta? Las ideas de adentro pasan a General.'))return;
+  (S.ideas||[]).forEach(i=>{ if(i.folderId===id) i.folderId=null; });
+  S.ideaFolders=(S.ideaFolders||[]).filter(f=>f.id!==id);
+  if(ideaFolder===id) ideaFolder=null;
+  closeModal();save();
 }
 let ideaImgTmp=null;
 function editIdea(id){
-  const i=id?S.ideas.find(x=>x.id===id):{texto:'',link:'',img:null};
+  const i=id?S.ideas.find(x=>x.id===id):{texto:'',link:'',img:null,precio:'',folderId:(ideaFolder&&ideaFolder!=='__general__')?ideaFolder:null};
   ideaImgTmp=i.img||null;
+  const folders=(S.ideaFolders||[]).filter(f=>canSeeFolder(f.acceso));
   modal(`<div class="modal-h"><h3>${id?'Editar idea':'Nueva idea'}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
-  <div class="modal-b"><div class="field"><label>Idea</label><textarea id="i_txt" placeholder="ej. Centros de mesa con olivo y velas">${esc(i.texto)}</textarea></div>
-  <div class="field"><label>Link (Pinterest / Instagram, opcional)</label><input id="i_link" value="${esc(i.link||'')}" placeholder="https://..."></div>
+  <div class="modal-b">
+  <div class="field"><label>Carpeta</label><select id="i_folder"><option value=""${!i.folderId?' selected':''}>General</option>${folders.map(f=>`<option value="${f.id}"${i.folderId===f.id?' selected':''}>${esc(f.nombre)}${f.acceso!=='todos'?' 🔒':''}</option>`).join('')}</select></div>
+  <div class="field"><label>Idea</label><textarea id="i_txt" placeholder="ej. Vestido corte sirena con encaje">${esc(i.texto)}</textarea></div>
+  <div class="field"><label>Precio (opcional)</label><input id="i_precio" value="${esc(i.precio||'')}" placeholder="ej. $8.000 / USD 300"></div>
+  <div class="field"><label>Link (Pinterest / Instagram / tienda, opcional)</label><input id="i_link" value="${esc(i.link||'')}" placeholder="https://..."></div>
   <div class="field"><label>Foto (opcional)</label>
     <label class="file-btn">📷 Elegir foto<input type="file" accept="image/*" style="display:none" onchange="onIdeaImg(this)"></label>
     <div id="ideaPrev" style="margin-top:10px">${ideaImgTmp?`<img src="${ideaImgTmp}"><button class="btn btn-sm" style="margin-left:8px;color:var(--danger)" onclick="ideaImgTmp=null;document.getElementById('ideaPrev').innerHTML=''">Quitar foto</button>`:''}</div>
@@ -1175,7 +1254,7 @@ function onIdeaImg(input){const f=input.files[0];if(!f)return;const r=new FileRe
     ideaImgTmp=c.toDataURL('image/jpeg',0.6);
     document.getElementById('ideaPrev').innerHTML='<img src="'+ideaImgTmp+'"><button class="btn btn-sm" style="margin-left:8px;color:var(--danger)" onclick="ideaImgTmp=null;document.getElementById(\'ideaPrev\').innerHTML=\'\'">Quitar foto</button>';};img.src=e.target.result;};
   r.readAsDataURL(f);}
-function saveIdea(id){const o={texto:$('#i_txt').value.trim(),link:$('#i_link').value.trim(),img:ideaImgTmp};
+function saveIdea(id){const o={texto:$('#i_txt').value.trim(),link:$('#i_link').value.trim(),img:ideaImgTmp,precio:$('#i_precio').value.trim(),folderId:$('#i_folder').value||null};
   if(!o.texto&&!o.img){toast('Escribí la idea o sumá una foto');return;}
   if(id)Object.assign(S.ideas.find(x=>x.id===id),o);else{o.id=uid();o.autor=ME;S.ideas.unshift(o);}ideaImgTmp=null;closeModal();save();}
 function openImg(id){const i=S.ideas.find(x=>x.id===id);if(!i||!i.img)return;const d=document.createElement('div');d.className='imgbox';d.onclick=()=>d.remove();d.innerHTML='<img src="'+i.img+'">';document.body.appendChild(d);}
