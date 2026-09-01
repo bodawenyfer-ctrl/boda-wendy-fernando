@@ -17,7 +17,7 @@
 <style>
 :root{
   --cream:#FAF7F0; --paper:#FFFFFF; --sand:#EFE9DC; --beige:#E3D9C6; --beige-deep:#D2C4AC;
-  --olive:#5B6248; --olive-deep:#3C4230; --olive-mid:#767C5E; --sage:#9AA284; --sage-soft:#C3C7AE;
+  --olive:#5F6E51; --olive-deep:#3F4A39; --olive-mid:#7B876C; --sage:#9EAB8C; --sage-soft:#C7CEB7;
   --silver:#AEB2B6; --silver-lo:#8D9297; --silver-hi:#E7E9EB;
   --ink:#2E3227; --ink-soft:#5A5D4E; --muted:#8B8B7C;
   --ok:#5E7B4E; --ok-bg:#E7EFDD; --warn:#B4863E; --warn-bg:#F5EBD6; --danger:#A8583F; --danger-bg:#F3E2DA;
@@ -58,7 +58,7 @@ a{color:var(--olive)}
 
 /* ---------- APP SHELL ---------- */
 #app{display:flex;min-height:100vh}
-nav#side{width:var(--nav-w);background:linear-gradient(180deg,var(--olive-deep),#333a29);color:#EDEEE4;
+nav#side{width:var(--nav-w);background:linear-gradient(180deg,var(--olive-deep),#343d2c);color:#EDEEE4;
   position:fixed;top:0;bottom:0;left:0;display:flex;flex-direction:column;padding:20px 0;z-index:40}
 .side-brand{display:flex;align-items:center;gap:11px;padding:2px 20px 16px}
 .side-brand img{width:42px;height:42px;object-fit:contain}
@@ -134,7 +134,7 @@ main{margin-left:var(--nav-w);flex:1;min-width:0;padding:26px 30px 90px}
 .stepper span{min-width:34px;text-align:center;font-weight:500}
 
 /* ===== DASHBOARD ===== */
-.hero{position:relative;background:linear-gradient(160deg,#464E38 0%,#3C4230 55%,#2f3527 100%);border-radius:22px;
+.hero{position:relative;background:linear-gradient(160deg,#4A5540 0%,#3F4A39 55%,#333d2e 100%);border-radius:22px;
   padding:38px 34px;color:#F2F2E9;overflow:hidden;box-shadow:var(--shadow-lg);margin-bottom:20px}
 .hero .sprig{position:absolute;opacity:.14;pointer-events:none}
 .hero-crest{width:74px;height:74px;object-fit:contain;margin-bottom:10px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.3))}
@@ -476,7 +476,8 @@ function closeModal(){$('#modalBg').classList.remove('show');}
 $('#modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
 
 /* ============ LOGIN + PIN ============ */
-function isPlanner(){return S.meta.user==='Wedding planner';}
+let ME=(function(){try{return localStorage.getItem('wf_me')||null;}catch(e){return null;}})();
+function isPlanner(){return ME==='Wedding planner';}
 function hashPin(p){let h=0;for(let i=0;i<p.length;i++)h=(h*31+p.charCodeAt(i))>>>0;return 'p'+h;}
 function renderChooser(){
   $('#loginBody').innerHTML=`
@@ -509,8 +510,8 @@ function submitPin(u,first){
   else{if(!S.pins||S.pins[u]!==hashPin(pin))return msg('PIN incorrecto');doLogin(u);}
 }
 function forgotPin(u){if(confirm('¿Reiniciar el PIN de '+u+'? Vas a poder crear uno nuevo.')){if(S.pins)delete S.pins[u];persist();renderPinScreen(u,true);}}
-function doLogin(u){S.meta.user=u;persist();$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();go('inicio');}
-function logout(){S.meta.user=null;persist();$('#app').classList.add('hidden');$('#login').classList.remove('hidden');renderChooser();}
+function doLogin(u){ME=u;try{localStorage.setItem('wf_me',u);}catch(e){}$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();go('inicio');}
+function logout(){ME=null;try{localStorage.removeItem('wf_me');}catch(e){}$('#app').classList.add('hidden');$('#login').classList.remove('hidden');renderChooser();}
 function toggleNav(open){const s=$('#side'),sc=$('#scrim');if(open){s.classList.add('open');sc.classList.add('show');}else{s.classList.remove('open');sc.classList.remove('show');}}
 
 /* ============ NAV / ROUTER ============ */
@@ -525,7 +526,7 @@ function visibleKeys(){let ks=(S.navOrder||NAV.map(n=>n[0]));if(isPlanner())ks=k
 function orderedNav(){return visibleKeys().filter(k=>NAVMAP[k]).map(k=>NAVMAP[k]);}
 function buildNav(){
   $('#navlinks').innerHTML=orderedNav().map(([k,l,i])=>`<li data-r="${k}" draggable="${editMode}" data-key="${k}" onclick="navClick('${k}')"><span class="ico">${i}</span>${l}</li>`).join('');
-  const u=S.meta.user;$('#footAv').textContent=(u==='Wedding planner'?'P':u[0]);$('#footAv').style.background=respColor(u);$('#footNm').textContent=u;
+  const u=ME;$('#footAv').textContent=(u==='Wedding planner'?'P':(u?u[0]:'?'));$('#footAv').style.background=respColor(u);$('#footNm').textContent=u;
   document.body.classList.toggle('editing',editMode);
   if(editMode)enableNavReorder();
 }
@@ -1173,7 +1174,7 @@ function onIdeaImg(input){const f=input.files[0];if(!f)return;const r=new FileRe
   r.readAsDataURL(f);}
 function saveIdea(id){const o={texto:$('#i_txt').value.trim(),link:$('#i_link').value.trim(),img:ideaImgTmp};
   if(!o.texto&&!o.img){toast('Escribí la idea o sumá una foto');return;}
-  if(id)Object.assign(S.ideas.find(x=>x.id===id),o);else{o.id=uid();o.autor=S.meta.user;S.ideas.unshift(o);}ideaImgTmp=null;closeModal();save();}
+  if(id)Object.assign(S.ideas.find(x=>x.id===id),o);else{o.id=uid();o.autor=ME;S.ideas.unshift(o);}ideaImgTmp=null;closeModal();save();}
 function openImg(id){const i=S.ideas.find(x=>x.id===id);if(!i||!i.img)return;const d=document.createElement('div');d.className='imgbox';d.onclick=()=>d.remove();d.innerHTML='<img src="'+i.img+'">';document.body.appendChild(d);}
 
 /* ============ POST-ITS ============ */
@@ -1193,7 +1194,7 @@ function vPostits(){
   </div>`;
   enablePostitDrag('board');
 }
-function addPostit(){S.postits.push({id:uid(),texto:'',color:PI_COLORS[S.postits.length%PI_COLORS.length],x:30+Math.random()*80,y:30+Math.random()*60,autor:S.meta.user});save();}
+function addPostit(){S.postits.push({id:uid(),texto:'',color:PI_COLORS[S.postits.length%PI_COLORS.length],x:30+Math.random()*80,y:30+Math.random()*60,autor:ME});save();}
 function editPostit(id,v){const p=S.postits.find(x=>x.id===id);p.texto=v;persist();}
 function delPostit(id){S.postits=S.postits.filter(x=>x.id!==id);save();}
 function enablePostitDrag(boardId){
@@ -1233,7 +1234,7 @@ function vPendientes(){
 }
 function toggleP(id){const p=S.pendientes.find(x=>x.id===id);p.hecho=!p.hecho;save();}
 function editPend(id){
-  const p=id?S.pendientes.find(x=>x.id===id):{titulo:'',texto:'',fecha:'',resp:S.meta.user,cat:'General',hecho:false};
+  const p=id?S.pendientes.find(x=>x.id===id):{titulo:'',texto:'',fecha:'',resp:ME,cat:'General',hecho:false};
   const cats=[...new Set(['General',...S.pendientes.map(x=>x.cat||'General')])];
   const resps=[...new Set([...(S.responsables||[]),p.resp].filter(Boolean))];
   modal(`<div class="modal-h"><h3>${id?'Editar pendiente':'Nuevo pendiente'}</h3><button class="icon-btn" onclick="closeModal()">✕</button></div>
@@ -1308,7 +1309,7 @@ async function exportExcel(){
 }
 
 /* ============ INIT ============ */
-if(S.meta.user){$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();go('inicio');}
+if(ME){$('#login').classList.add('hidden');$('#app').classList.remove('hidden');buildNav();go('inicio');}
 else{renderChooser();}
 </script>
 <script>
@@ -1348,11 +1349,12 @@ const firebaseConfig = {
       const data=snap.data();
       if(data._rev && data._rev===myRev){ ready=true; dot('Sincronizado con la nube ✓','#5E7B4E'); return; }
       S=data;
+      if(S.meta) S.meta.user=ME;
       try{ if(hasLS) localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){}
       ready=true;
       const modalOpen=document.getElementById('modalBg') && document.getElementById('modalBg').classList.contains('show');
       const appVisible=document.getElementById('app') && !document.getElementById('app').classList.contains('hidden');
-      if(S.meta && S.meta.user && appVisible && !modalOpen){ try{ buildNav(); render(); }catch(e){console.error(e);} }
+      if(ME && appVisible && !modalOpen){ try{ buildNav(); render(); }catch(e){console.error(e);} }
       dot('Sincronizado con la nube ✓','#5E7B4E');
     }, function(err){ console.error('onSnapshot',err); dot('Sin conexión (guardado en este equipo)','#B4863E'); });
 
