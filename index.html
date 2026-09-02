@@ -598,7 +598,7 @@ const NAV=[
 ];
 const NAVMAP=Object.fromEntries(NAV.map(n=>[n[0],n]));
 let route='inicio',editMode=false;
-function visibleKeys(){let ks=(S.navOrder||NAV.map(n=>n[0]));if(isPlanner())ks=ks.filter(k=>k!=='presupuesto');return ks;}
+function visibleKeys(){return (S.navOrder||NAV.map(n=>n[0]));}
 function orderedNav(){return visibleKeys().filter(k=>NAVMAP[k]).map(k=>NAVMAP[k]);}
 function buildNav(){
   $('#navlinks').innerHTML=orderedNav().map(([k,l,i])=>`<li data-r="${k}" draggable="${editMode}" data-key="${k}" onclick="navClick('${k}')"><span class="ico">${i}</span>${l}</li>`).join('');
@@ -620,7 +620,6 @@ function enableNavReorder(){
 }
 function go(r){route=r;toggleNav(false);render();}
 function render(){
-  if(route==='presupuesto'&&isPlanner())route='inicio';
   $$('#navlinks li').forEach(li=>li.classList.toggle('active',li.dataset.r===route));
   const nav=NAV.find(n=>n[0]===route);$('#mtitle').textContent=nav?nav[1]:'';
   ({inicio:vInicio,presupuesto:vPresupuesto,invitados:vInvitados,mesas:vMesas,cronograma:vCronograma,
@@ -664,16 +663,15 @@ function vInicio(){
   const dp=daysParts();
   const pend=S.pendientes.filter(p=>!p.hecho).slice(0,4);
   const sprig=`<svg class="sprig" style="right:-30px;bottom:-30px;width:260px" viewBox="0 0 200 200"><g fill="none" stroke="#C3C7AE" stroke-width="2"><path d="M100 190 C100 120 60 90 30 70"/><path d="M100 190 C100 120 140 90 170 70"/></g><g fill="#C3C7AE">${Array.from({length:14}).map((_,i)=>`<circle cx="${30+i*10}" cy="${70+Math.sin(i)*8+i*3}" r="4"/>`).join('')}</g></svg>`;
-  const nextPay=[...(isPlanner()?[]:S.budget.filter(b=>b.senaFecha).map(b=>({f:b.senaFecha,t:'Seña '+b.item}))),
+  const nextPay=[...S.budget.filter(b=>b.senaFecha).map(b=>({f:b.senaFecha,t:'Seña '+b.item})),
     ...S.calendario.map(c=>({f:c.fecha,t:c.titulo}))].filter(x=>x.f&&x.f>=new Date().toISOString().slice(0,10)).sort((a,b)=>a.f.localeCompare(b.f)).slice(0,4);
   const quick=orderedNav().filter(n=>n[0]!=='inicio');
-  const statCards=(isPlanner()?[]:[
+  const statCards=[
     `<div class="card stat clk" onclick="go('presupuesto')"><div class="k">💰 Total de la boda</div><div class="v">${fmt(t.gran)}</div><div class="m">Seña pagada ${fmt(t.sena)}</div></div>`,
-    `<div class="card stat clk" onclick="go('presupuesto')"><div class="k">🧾 Falta pagar</div><div class="v">${fmt(t.falta)}</div><div class="progress"><i style="width:${t.gran?Math.min(100,t.sena/t.gran*100):0}%"></i></div></div>`
-  ]).concat([
+    `<div class="card stat clk" onclick="go('presupuesto')"><div class="k">🧾 Falta pagar</div><div class="v">${fmt(t.falta)}</div><div class="progress"><i style="width:${t.gran?Math.min(100,t.sena/t.gran*100):0}%"></i></div></div>`,
     `<div class="card stat clk" onclick="go('invitados')"><div class="k">👥 Invitados</div><div class="v">${gc.tot}</div><div class="m">${gc.a} adultos · ${gc.n} niños</div></div>`,
     `<div class="card stat clk" onclick="go('invitados')"><div class="k">✅ Confirmados</div><div class="v" style="color:var(--ok)">${cc.tot}</div><div class="m">${cc.fam} familias de ${gc.fam}</div></div>`
-  ]).join('');
+  ].join('');
   $('#view').innerHTML=`
   <div class="view-head no-print" style="margin-bottom:8px;justify-content:flex-end">
     ${editMode?'<span class="drag-hint">✋ Arrastrá los atajos o el menú para reordenar</span>':''}
